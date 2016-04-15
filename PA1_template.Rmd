@@ -1,25 +1,101 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "project1 for reproducible research"
+author: "sjp"
+date: "2016年4月14日"
+output: html_document
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
 
-## Loading and preprocessing the data
+## R Markdown
+
+This is an R Markdown document for project 1 in
+download and load the files to a datafram
+```{r}
+filename<-"repdata-data-activity.zip"
+if (!file.exists("activity.csv")){
+    fileURL <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+    download.file(fileURL, filename)
+}  
+if (!file.exists("activity.csv")) {
+    unzip(filename) 
+}
+mydata<-read.csv("activity.csv")
 
 
+```
+Get the mean of total number of steps taken per day
 
-## What is mean total number of steps taken per day?
+```{r}
+
+step_mean_perday<-tapply(mydata$steps, mydata$date,sum,na.rm=T)
+hist(step_mean_perday,breaks = 30,,xlab = "number of steps per Day",col="red",main = " total number of steps taken per day")
+
+print("Mean of step per day ")
+mean(step_mean_perday)
+print("Median of step per day")
+median(step_mean_perday)
+```
+
+Get the average daily activity pattern
+```{r}
+step_mean_perinterval<-tapply(mydata$steps, mydata$interval,mean,na.rm=T)
+plot(unique(mydata$interval),step_mean_perinterval,type="l",xlab = "Time/minutes",ylab = " number of steps",main = " average number of steps taken per interval")
+max_interval<-which.max(step_mean_perinterval)
+print("Maxium of step per interval")
+step_mean_perinterval[max_interval]
+
+```
 
 
+Imputing missing values
+Replace NAs with average number of steps taken per interval
 
-## What is the average daily activity pattern?
+```{r}
+sum_NA<-sum(!complete.cases(mydata))
+step_use<-rbind(unique(mydata$interval),step_mean_perinterval)
+step_use<-t(step_use)
+colnames(step_use)<-c("interval","step mean")
+naused<-mydata[!complete.cases(mydata),]
+aa<-merge(naused,step_use,by="interval",all=T)
+aa$steps<-aa$`step mean`
+newaa<-aa[order(aa$date,aa$interval),]
+newdata<-mydata
+newdata$steps[!complete.cases(mydata)]<-newaa$steps
+sum(!complete.cases(newdata))
+new_step_mean_perday<-tapply(newdata$steps, newdata$date,sum)
 
 
+```
+plot and get the new mean and median
+```{r}
+hist(new_step_mean_perday,breaks = 30,,xlab = "number of steps per Day",col="red",main = " total number of steps taken per day on impute value")
+print("Mean of step per day on imputed values ")
+mean(new_step_mean_perday)
+print("Median of step per day on imputed values ")
+median(new_step_mean_perday)
+```
 
-## Imputing missing values
+Vertify if there are differences in activity patterns between weekdays and weekends
+(with filled-in datasets)
+
+```{r}
+library(lubridate)
+myweek=weekdays(ymd(newdata$date))
+#due to language settings of my computer,the return of function weekdays is Chinese,"星期六" refers to Saturday,"星期日" refers to Sunday
+newdata$week[myweek==c("星期六","星期日")]<-"weekend"
+newdata$week[myweek!=c("星期六","星期日")]<-"weekday"
+s<-split(newdata,newdata$week)
+weekdaystep<-tapply(s$weekday$steps,s$weekday$interval,mean)
+weekendstep<-tapply(s$weekend$steps,s$weekend$interval,mean)
+par(mfrow=c(2,1))
+par(mar=c(4,4,2,2))
+plot(unique(s$weekday$interval),weekdaystep,type = "l",ylab = "Number of steps",xlab = "Interval",main = "weekday")
+plot(sort(unique(s$weekend$interval)),weekendstep,type = "l",ylab = "Number of steps",xlab = "Interval",main = "weekend")
+```
+```{r pressure, echo=FALSE}
 
 
-
-## Are there differences in activity patterns between weekdays and weekends?
+```
